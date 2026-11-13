@@ -12,14 +12,16 @@ def load_scan(path):
     hosts, findings, services = set(), {}, {}
     with path.open("rb") as stream:
         context = ET.iterparse(stream, events=("start", "end"))
-        _, root = next(context)
+        _, root = next(context, (None, None))
+        if root is None:
+            raise ValueError("empty Nessus export")
         if root.tag != "NessusClientData_v2":
             raise ValueError("expected a Nessus v2 XML export")
         for event, node in context:
             if event != "end" or node.tag != "ReportHost":
                 continue
-            host = (node.findtext("./HostProperties/tag[@name='host-ip']")
-                    or node.get("name") or "").strip()
+            ip = (node.findtext("./HostProperties/tag[@name='host-ip']") or "").strip()
+            host = ip or (node.get("name") or "").strip()
             if not host:
                 raise ValueError("report host has no IP or name")
             hosts.add(host)

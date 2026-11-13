@@ -37,3 +37,7 @@ Host IP is preferred over hostname. Findings are keyed by host, protocol, port a
 ```sh
 python3 -m unittest discover -s tests -v
 ```
+
+## Review workflow
+
+Review host coverage before comparing findings. A missing host can indicate a change in scanner scope or reachability. Check service inventory independently of the finding severity threshold.
