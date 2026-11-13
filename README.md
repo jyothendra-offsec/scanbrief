@@ -41,3 +41,7 @@ python3 -m unittest discover -s tests -v
 ## Review workflow
 
 Review host coverage before comparing findings. A missing host can indicate a change in scanner scope or reachability. Check service inventory independently of the finding severity threshold.
+
+## Usage terms
+
+Original material in this revision requires the owner's written permission for modification or redistribution. Earlier MIT releases and third-party licenses retain their terms. See [LICENSE](LICENSE).
