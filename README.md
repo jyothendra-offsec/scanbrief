@@ -1,24 +1,39 @@
 # ScanBrief
 
-ScanBrief turns Nessus v2 exports into a local review queue and a deduplicated service inventory. Compare two exports to see what changed between assessments.
+Turn Nessus v2 exports into a triage queue and service inventory.
 
-## Run the example
+## Quick start
 
-Requires Python 3.10+ and uses only the standard library. Extract the archive and run from its project directory.
+Use Python 3.10 or newer. The CLI runs locally with the standard library. From the repository root, run:
 
-```bash
+```sh
 python3 scanbrief.py examples/current.nessus --baseline examples/baseline.nessus --output demo
 ```
 
-Replace the sample inputs with your exports. Use a new output directory each run. Add `--min-severity high` for a smaller triage queue.
+The sample yields one endpoint and one finding at the default threshold. The comparison records a severity increase, a newly observed informational plugin, and a plugin absent from the current scan.
 
-| File | Contents |
-| --- | --- |
-| `triage.json` | Findings sorted by severity, with host, endpoint, plugin ID and remediation text |
-| `services.csv` | Unique reported nonzero-port endpoints with observed service labels |
+## Input and output
 
-Findings deduplicate by host, protocol, port and plugin ID. When repeated entries disagree on severity, ScanBrief keeps the highest severity. The service inventory and baseline comparison use all observations, regardless of the triage filter.
+| Input | Format | Output or purpose |
+| --- | --- | --- |
+| Current scan | Nessus v2 XML | `triage.json` and `services.csv` |
+| `--baseline` | Earlier Nessus v2 XML | Added and absent observations, severity changes, and host coverage |
+| `--min-severity` | `info`, `low`, `medium`, `high`, or `critical` | Filters triage findings only |
 
-The comparison separates findings on hosts present in both scans from hosts missing entirely. Treat a finding that disappeared as **not observed**. Scan scope, credentials and plugin coverage can change between exports. The service inventory reflects what the export reported and does not independently verify reachability.
+Use a fresh output directory for each run. The service CSV includes observed nonzero ports even when no findings meet the triage threshold.
 
-ScanBrief reads trusted local exports. The reports can contain internal addresses and remediation details.
+## Interpreting results
+
+Host IP is preferred over hostname. Findings are keyed by host, protocol, port and plugin ID. Duplicate findings retain the highest severity. Missing observations do not establish remediation. Compare scan scope, authentication, and plugin coverage first.
+
+## Troubleshooting
+
+- Use the included fixture first to confirm the command and working directory.
+- Check the input path and required fields if the CLI exits with status 2.
+- Keep real assessment exports and generated reports in your private workspace.
+
+## Verify locally
+
+```sh
+python3 -m unittest discover -s tests -v
+```

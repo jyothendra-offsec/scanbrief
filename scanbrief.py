@@ -10,42 +10,39 @@ SEVERITIES = ("info", "low", "medium", "high", "critical")
 
 def load_scan(path):
     hosts, findings, services = set(), {}, {}
-    for event, node in ET.iterparse(path, events=("start", "end")):
-        if event == "start":
-            if node.tag != "NessusClientData_v2":
-                raise ValueError("expected a Nessus v2 XML export")
-            break
-    else:
-        raise ValueError("empty export")
-    # Start a fresh iterator so the root check cannot consume buffered events.
-    for _, node in ET.iterparse(path, events=("end",)):
-        if node.tag != "ReportHost":
-            continue
-        host = (node.findtext("./HostProperties/tag[@name='host-ip']")
-                or node.get("name") or "").strip()
-        if not host:
-            raise ValueError("report host has no IP or name")
-        hosts.add(host)
-        for item in node.findall("ReportItem"):
-            plugin = item.attrib["pluginID"]
-            port = int(item.attrib["port"])
-            severity = int(item.attrib["severity"])
-            if not 0 <= severity < len(SEVERITIES) or not 0 <= port <= 65535:
-                raise ValueError("invalid port or severity")
-            protocol = item.get("protocol", "").lower()
-            service = item.get("svc_name", "").strip()
-            endpoint = (host, protocol, port)
-            if port:
-                names = services.setdefault(endpoint, set())
-                if service and service != "unknown":
-                    names.add(service)
-            key = (*endpoint, plugin)
-            row = dict(host=host, protocol=protocol, port=port, plugin=plugin,
-                       severity=severity, name=item.get("pluginName", ""),
-                       remediation=(item.findtext("solution") or "").strip())
-            if key not in findings or severity > findings[key]["severity"]:
-                findings[key] = row
-        node.clear()
+    with path.open("rb") as stream:
+        context = ET.iterparse(stream, events=("start", "end"))
+        _, root = next(context)
+        if root.tag != "NessusClientData_v2":
+            raise ValueError("expected a Nessus v2 XML export")
+        for event, node in context:
+            if event != "end" or node.tag != "ReportHost":
+                continue
+            host = (node.findtext("./HostProperties/tag[@name='host-ip']")
+                    or node.get("name") or "").strip()
+            if not host:
+                raise ValueError("report host has no IP or name")
+            hosts.add(host)
+            for item in node.findall("ReportItem"):
+                plugin = item.attrib["pluginID"]
+                port = int(item.attrib["port"])
+                severity = int(item.attrib["severity"])
+                if not 0 <= severity < len(SEVERITIES) or not 0 <= port <= 65535:
+                    raise ValueError("invalid port or severity")
+                protocol = item.get("protocol", "").lower()
+                service = item.get("svc_name", "").strip()
+                endpoint = (host, protocol, port)
+                if port:
+                    names = services.setdefault(endpoint, set())
+                    if service and service != "unknown":
+                        names.add(service)
+                key = (*endpoint, plugin)
+                row = dict(host=host, protocol=protocol, port=port, plugin=plugin,
+                           severity=severity, name=item.get("pluginName", ""),
+                           remediation=(item.findtext("solution") or "").strip())
+                if key not in findings or severity > findings[key]["severity"]:
+                    findings[key] = row
+            node.clear()
     if not hosts:
         raise ValueError("export contains no report hosts")
     return hosts, findings, services
